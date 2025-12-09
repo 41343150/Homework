@@ -42,7 +42,7 @@ public:
         terms = 0;
         termArray = new Term[capacity];
     }
-
+ // 複製建構子做深拷貝
     Polynomial(const Polynomial& other) {
         capacity = other.capacity;
         terms = other.terms;
@@ -66,6 +66,7 @@ public:
                 return;
             }
         }
+         // 如果容量不足就擴大一倍
         if (terms == capacity) {
             capacity *= 2;
             Term* temp = new Term[capacity];
@@ -74,6 +75,7 @@ public:
             delete[] termArray;
             termArray = temp;
         }
+       // 新的放到最後面
         termArray[terms].coef = c;
         termArray[terms].exp = e;
         terms++;
@@ -84,7 +86,7 @@ public:
             }
         }
     }
-
+  // 多項式相加
     Polynomial Add(Polynomial poly) {
         Polynomial result;
         int i = 0, j = 0;
@@ -109,7 +111,7 @@ public:
             result.NewTerm(poly.termArray[j].coef, poly.termArray[j].exp);
         return result;
     }
-
+ // 多項式相乘
     Polynomial Mult(Polynomial poly) {
         Polynomial result;
         for (int i = 0; i < terms; i++) {
