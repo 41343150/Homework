@@ -38,7 +38,7 @@ private:
 
 public:
     Polynomial() {
-        capacity = 10; /* 預設容量 10 */
+        capacity = 10; //預設容量為 10 
         terms = 0;
         termArray = new Term[capacity];
     }
