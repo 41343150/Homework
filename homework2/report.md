@@ -38,8 +38,7 @@ private:
 
 public:
     Polynomial() {
-  // 預設建構子：初始容量 10
-        capacity = 10;
+        capacity = 10; /* 預設容量 10 */
         terms = 0;
         termArray = new Term[capacity];
     }
