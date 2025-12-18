@@ -15,290 +15,182 @@
 ## 程式實作
 ```cpp
 #include <iostream>
-#include <cmath>
 using namespace std;
 
-// ------------------------------
-// PolyNode (for Polynomial only)
-// ------------------------------
-class PolyNode {
-public:
-    int coef, exp;
-    PolyNode* link;
+struct Term {
+    double coef;
+    int exp;
+    Term* next;
+
+    Term(double c = 0, int e = 0, Term* n = nullptr)
+        : coef(c), exp(e), next(n) {}
 };
 
-// ------------------------------
-// Available List (Global Manager)
-// ------------------------------
-class Avail {
-public:
-    static PolyNode* head;
-
-    static bool isEmpty() { return head == nullptr; }
-
-    static PolyNode* getNode() {
-        if (isEmpty()) return new PolyNode;
-        PolyNode* p = head;
-        head = head->link;
-        return p;
-    }
-
-    static void returnNode(PolyNode* p) {
-        p->link = head;
-        head = p;
-    }
-
-    // 回收整串（除了 header 本身）
-    static void getBack(PolyNode* header) {
-        PolyNode* cur = header->link;
-        while (cur != header) {
-            PolyNode* next = cur->link;
-            returnNode(cur);
-            cur = next;
-        }
-        header->link = header; // 重設為空串
-    }
-};
-
-PolyNode* Avail::head = nullptr;
-
-// ------------------------------
-// Polynomial
-// ------------------------------
 class Polynomial {
 private:
-    PolyNode* header;   // 環狀串列 header
+    Term* head; // 排序：由大到小
 
 public:
-    // Constructor
-    Polynomial() {
-        header = Avail::getNode();
-        header->coef = 0;
-        header->exp = -1;
-        header->link = header;
-    }
+    Polynomial() : head(nullptr) {}
 
-    // Destructor
     ~Polynomial() {
-        Avail::getBack(header);
+        clear();
     }
 
-    // Copy Constructor
-    Polynomial(const Polynomial& a) {
-        header = Avail::getNode();
-        header->coef = 0;
-        header->exp = -1;
-        header->link = header;
-
-        PolyNode* cur = a.header->link;
-        PolyNode* last = header;
-
-        while (cur != a.header) {
-            PolyNode* p = Avail::getNode();
-            p->coef = cur->coef;
-            p->exp = cur->exp;
-
-            // append
-            p->link = header;
-            last->link = p;
-            last = p;
-
-            cur = cur->link;
+    void clear() {
+        while (head) {
+            Term* tmp = head;
+            head = head->next;
+            delete tmp;
         }
     }
 
-    // Assignment Operator
-    const Polynomial& operator=(const Polynomial& a) {
-        if (this == &a) return *this;
+    // 插入並保持降冪、同次合併
+    void newTerm(double coef, int exp) {
+        if (coef == 0) return;
 
-        Avail::getBack(header);
-
-        PolyNode* cur = a.header->link;
-        PolyNode* last = header;
-
-        while (cur != a.header) {
-            PolyNode* p = Avail::getNode();
-            p->coef = cur->coef;
-            p->exp = cur->exp;
-
-            p->link = header;
-            last->link = p;
-            last = p;
-
-            cur = cur->link;
+        // 1. 空串或插前面
+        if (!head || head->exp < exp) {
+            head = new Term(coef, exp, head);
+            return;
         }
-        return *this;
-    }
 
-    // Insert (keep descending order)
-    void insertTerm(int c, int e) {
-        if (c == 0) return;
+        Term* cur = head;
+        Term* prev = nullptr;
 
-        PolyNode* cur = header;
+        // 找插入位置
+        while (cur && cur->exp > exp) {
+            prev = cur;
+            cur = cur->next;
+        }
 
-        // find insertion point
-        while (cur->link != header && cur->link->exp > e)
-            cur = cur->link;
-
-        // same exponent → combine
-        if (cur->link != header && cur->link->exp == e) {
-            cur->link->coef += c;
-            if (cur->link->coef == 0) {
-                // remove node
-                PolyNode* rm = cur->link;
-                cur->link = rm->link;
-                Avail::returnNode(rm);
+        // 2. 同次方 -> 合併
+        if (cur && cur->exp == exp) {
+            cur->coef += coef;
+            if (cur->coef == 0) {
+                // 合併後係數變0 -> 刪掉
+                if (prev) prev->next = cur->next;
+                else head = cur->next;
+                delete cur;
             }
             return;
         }
 
-        PolyNode* p = Avail::getNode();
-        p->coef = c;
-        p->exp = e;
-        p->link = cur->link;
-        cur->link = p;
+        // 3. 插中間或後面
+        Term* newNode = new Term(coef, exp, cur);
+        if (prev) prev->next = newNode;
+        else head = newNode;
     }
 
-    // Addition
+    // 加法
     Polynomial operator+(const Polynomial& b) const {
-        Polynomial r;
-        PolyNode* A = header->link;
-        PolyNode* B = b.header->link;
+        Polynomial result;
+        Term* p = head;
+        Term* q = b.head;
 
-        while (A != header && B != b.header) {
-            if (A->exp == B->exp) {
-                r.insertTerm(A->coef + B->coef, A->exp);
-                A = A->link;
-                B = B->link;
-            } else if (A->exp > B->exp) {
-                r.insertTerm(A->coef, A->exp);
-                A = A->link;
-            } else {
-                r.insertTerm(B->coef, B->exp);
-                B = B->link;
+        while (p && q) {
+            if (p->exp > q->exp) {
+                result.newTerm(p->coef, p->exp);
+                p = p->next;
+            }
+            else if (p->exp < q->exp) {
+                result.newTerm(q->coef, q->exp);
+                q = q->next;
+            }
+            else {
+                double c = p->coef + q->coef;
+                if (c != 0) result.newTerm(c, p->exp);
+                p = p->next;
+                q = q->next;
             }
         }
-        while (A != header) { r.insertTerm(A->coef, A->exp); A = A->link; }
-        while (B != b.header) { r.insertTerm(B->coef, B->exp); B = B->link; }
+        while (p) { result.newTerm(p->coef, p->exp); p = p->next; }
+        while (q) { result.newTerm(q->coef, q->exp); q = q->next; }
 
-        return r;
+        return result;
     }
 
-    // Subtraction (this - b)
+    // 減法
     Polynomial operator-(const Polynomial& b) const {
-        Polynomial r;
-        PolyNode* A = header->link;
-        PolyNode* B = b.header->link;
-
-        while (A != header && B != b.header) {
-            if (A->exp == B->exp) {
-                r.insertTerm(A->coef - B->coef, A->exp);
-                A = A->link;
-                B = B->link;
-            } else if (A->exp > B->exp) {
-                r.insertTerm(A->coef, A->exp);
-                A = A->link;
-            } else {
-                r.insertTerm(-B->coef, B->exp);
-                B = B->link;
-            }
+        Polynomial result;
+        Term* q = b.head;
+        while (q) {
+            result.newTerm(-q->coef, q->exp);
+            q = q->next;
         }
-        while (A != header) { r.insertTerm(A->coef, A->exp); A = A->link; }
-        while (B != b.header) { r.insertTerm(-B->coef, B->exp); B = B->link; }
-
-        return r;
+        return *this + result;
     }
 
-    // Multiplication
+    // 乘法
     Polynomial operator*(const Polynomial& b) const {
-        Polynomial r;
-        PolyNode* A = header->link;
-
-        while (A != header) {
-            PolyNode* B = b.header->link;
-            while (B != b.header) {
-                r.insertTerm(A->coef * B->coef, A->exp + B->exp);
-                B = B->link;
+        Polynomial result;
+        for (Term* p = head; p; p = p->next) {
+            for (Term* q = b.head; q; q = q->next) {
+                result.newTerm(p->coef * q->coef, p->exp + q->exp);
             }
-            A = A->link;
         }
-        return r;
+        return result;
     }
 
     // Evaluate
-    float Evaluate(float x) const {
-        float sum = 0;
-        PolyNode* cur = header->link;
-        while (cur != header) {
-            sum += cur->coef * pow(x, cur->exp);
-            cur = cur->link;
+    double Evaluate(double x) const {
+        double sum = 0;
+        for (Term* p = head; p; p = p->next) {
+            double powX = 1;
+            for (int i = 0; i < p->exp; i++) powX *= x;
+            sum += p->coef * powX;
         }
         return sum;
     }
 
-    // Friend I/O operators
-    friend istream& operator>>(istream&, Polynomial&);
-    friend ostream& operator<<(ostream&, Polynomial&);
+    // 輸入：先輸入幾項，再輸入（coef exp）
+    friend istream& operator>>(istream& is, Polynomial& poly) {
+        int n;
+        is >> n;
+        for (int i = 0; i < n; i++) {
+            double c; int e;
+            cout << "輸入第 " << i + 1 << " 項的係數與指數：";
+            is >> c >> e;
+            poly.newTerm(c, e);
+        }
+        return is;
+    }
+
+    // 輸出：格式 x^exp
+    friend ostream& operator<<(ostream& os, const Polynomial& poly) {
+        if (!poly.head) return os << "0";
+
+        bool first = true;
+        for (Term* p = poly.head; p; p = p->next) {
+            if (!first) os << " + ";
+            first = false;
+            os << p->coef << "x^" << p->exp;
+        }
+        return os;
+    }
 };
 
-// ------------------------------
-// Input >>
-// ------------------------------
-istream& operator>>(istream& is, Polynomial& x) {
-    int n; is >> n;
-
-    Avail::getBack(x.header);
-
-    for (int i = 0; i < n; i++) {
-        int c, e;
-        is >> c >> e;
-        x.insertTerm(c, e);
-    }
-    return is;
-}
-
-// ------------------------------
-// Output <<
-// ------------------------------
-ostream& operator<<(ostream& os, Polynomial& x) {
-    PolyNode* cur = x.header->link;
-    int cnt = 0;
-
-    while (cur != x.header) {
-        cnt++;
-        cur = cur->link;
-    }
-
-    os << cnt << " ";
-    cur = x.header->link;
-    while (cur != x.header) {
-        os << cur->coef << " " << cur->exp << " ";
-        cur = cur->link;
-    }
-    return os;
-}
-
-// ------------------------------
-// Main (for testing)
-// ------------------------------
 int main() {
     Polynomial A, B;
+    double x;
 
-    cout << "Input A: ";  cin >> A;
-    cout << "Input B: ";  cin >> B;
+    cout << "輸入 A 的項數：";
+    cin >> A;
+
+    cout << "輸入 B 的項數：";
+    cin >> B;
+
+    cout << "輸入 x：";
+    cin >> x;
 
     cout << "A = " << A << endl;
     cout << "B = " << B << endl;
 
-    Polynomial C = A + B;
-    Polynomial D = A - B;
-    Polynomial E = A * B;
+    cout << "A + B = " << (A + B) << endl;
+    cout << "A - B = " << (A - B) << endl;
+    cout << "A * B = " << (A * B) << endl;
 
-    cout << "A + B = " << C << endl;
-    cout << "A - B = " << D << endl;
-    cout << "A * B = " << E << endl;
-
-    cout << "Evaluate A at x=2: " << A.Evaluate(2) << endl;
+    cout << "A(" << x << ") = " << A.Evaluate(x) << endl;
 
     return 0;
 }
