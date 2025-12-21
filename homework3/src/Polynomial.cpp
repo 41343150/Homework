@@ -12,7 +12,7 @@ struct Term {
 
 class Polynomial {
 private:
-    Term* head; // 排序：由大到小
+    Term* head;
 
 public:
     Polynomial() : head(nullptr) {}
@@ -29,11 +29,8 @@ public:
         }
     }
 
-    // 插入並保持降冪、同次合併
     void newTerm(double coef, int exp) {
         if (coef == 0) return;
-
-        // 1. 空串或插前面
         if (!head || head->exp < exp) {
             head = new Term(coef, exp, head);
             return;
@@ -42,17 +39,14 @@ public:
         Term* cur = head;
         Term* prev = nullptr;
 
-        // 找插入位置
         while (cur && cur->exp > exp) {
             prev = cur;
             cur = cur->next;
         }
 
-        // 2. 同次方 -> 合併
         if (cur && cur->exp == exp) {
             cur->coef += coef;
             if (cur->coef == 0) {
-                // 合併後係數變0 -> 刪掉
                 if (prev) prev->next = cur->next;
                 else head = cur->next;
                 delete cur;
@@ -60,13 +54,11 @@ public:
             return;
         }
 
-        // 3. 插中間或後面
         Term* newNode = new Term(coef, exp, cur);
         if (prev) prev->next = newNode;
         else head = newNode;
     }
 
-    // 加法
     Polynomial operator+(const Polynomial& b) const {
         Polynomial result;
         Term* p = head;
@@ -94,7 +86,6 @@ public:
         return result;
     }
 
-    // 減法
     Polynomial operator-(const Polynomial& b) const {
         Polynomial result;
         Term* q = b.head;
@@ -105,7 +96,6 @@ public:
         return *this + result;
     }
 
-    // 乘法
     Polynomial operator*(const Polynomial& b) const {
         Polynomial result;
         for (Term* p = head; p; p = p->next) {
@@ -116,7 +106,6 @@ public:
         return result;
     }
 
-    // Evaluate
     double Evaluate(double x) const {
         double sum = 0;
         for (Term* p = head; p; p = p->next) {
@@ -127,12 +116,12 @@ public:
         return sum;
     }
 
-    // 輸入：先輸入幾項，再輸入（coef exp）
     friend istream& operator>>(istream& is, Polynomial& poly) {
         int n;
         is >> n;
         for (int i = 0; i < n; i++) {
-            double c; int e;
+            double c; 
+            int e;
             cout << "輸入第 " << i + 1 << " 項的係數與指數：";
             is >> c >> e;
             poly.newTerm(c, e);
@@ -140,10 +129,8 @@ public:
         return is;
     }
 
-    // 輸出：格式 x^exp
     friend ostream& operator<<(ostream& os, const Polynomial& poly) {
         if (!poly.head) return os << "0";
-
         bool first = true;
         for (Term* p = poly.head; p; p = p->next) {
             if (!first) os << " + ";
