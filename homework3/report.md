@@ -6,35 +6,21 @@
 ## 解題策略
 * 多項式項數不固定，做運算時也會一直增加或減少，用陣列會變得複雜，改用鏈結串列新增刪除項目較容易。
 * 每個新節點加入時依照指數大小把它放到正確的位置（從大到小）這樣不需要額外寫排序也能讓後續的運算變得簡單。
-* 多項式的加減乘會不斷產生新節點，如果一直 new / delete時間會浪費在記憶體管理上另效率變差。因此導入 Available List，把不用的節點先存起，
+* 多項式的加減乘會不斷產生新節點，如果一直 new / delete時間會浪費在記憶體管理上另效率變差。因此導入 Available List，把不用的節點存起來，
 需要新節點時才提取用這方法來減少記憶體配置。
 * 所有節點在不需要時都會回到 Available List，這樣記憶體的管理會較一致，能避免重複 delete 。 
 * Iterator使用起來比較直觀。多項式運算時看起來會更乾淨也更好維護。
 * 加、減、乘、輸入與輸出都寫成運算子多載，讓程式裡可以直接用 A + B 或 cout << A 的方式操作。
 ## 程式實作
+
+### Polynomial 類別
 ```cpp
-#include <iostream>
-using namespace std;
-
-struct Term {
-    double coef;
-    int exp;
-    Term* next;
-
-    Term(double c = 0, int e = 0, Term* n = nullptr)
-        : coef(c), exp(e), next(n) {}
-};
-
 class Polynomial {
 private:
-    Term* head; // 排序：由大到小
-
+    Term* head; 
 public:
     Polynomial() : head(nullptr) {}
-
-    ~Polynomial() {
-        clear();
-    }
+    ~Polynomial() { clear(); }
 
     void clear() {
         while (head) {
@@ -43,132 +29,132 @@ public:
             delete tmp;
         }
     }
-
-    // 插入並保持降冪、同次合併
-    void newTerm(double coef, int exp) {
-        if (coef == 0) return;
-
-        // 1. 空串或插前面
-        if (!head || head->exp < exp) {
-            head = new Term(coef, exp, head);
-            return;
-        }
-
-        Term* cur = head;
-        Term* prev = nullptr;
-
-        // 找插入位置
-        while (cur && cur->exp > exp) {
-            prev = cur;
-            cur = cur->next;
-        }
-
-        // 2. 同次方 -> 合併
-        if (cur && cur->exp == exp) {
-            cur->coef += coef;
-            if (cur->coef == 0) {
-                // 合併後係數變0 -> 刪掉
-                if (prev) prev->next = cur->next;
-                else head = cur->next;
-                delete cur;
-            }
-            return;
-        }
-
-        // 3. 插中間或後面
-        Term* newNode = new Term(coef, exp, cur);
-        if (prev) prev->next = newNode;
-        else head = newNode;
-    }
-
-    // 加法
-    Polynomial operator+(const Polynomial& b) const {
-        Polynomial result;
-        Term* p = head;
-        Term* q = b.head;
-
-        while (p && q) {
-            if (p->exp > q->exp) {
-                result.newTerm(p->coef, p->exp);
-                p = p->next;
-            }
-            else if (p->exp < q->exp) {
-                result.newTerm(q->coef, q->exp);
-                q = q->next;
-            }
-            else {
-                double c = p->coef + q->coef;
-                if (c != 0) result.newTerm(c, p->exp);
-                p = p->next;
-                q = q->next;
-            }
-        }
-        while (p) { result.newTerm(p->coef, p->exp); p = p->next; }
-        while (q) { result.newTerm(q->coef, q->exp); q = q->next; }
-
-        return result;
-    }
-
-    // 減法
-    Polynomial operator-(const Polynomial& b) const {
-        Polynomial result;
-        Term* q = b.head;
-        while (q) {
-            result.newTerm(-q->coef, q->exp);
-            q = q->next;
-        }
-        return *this + result;
-    }
-
-    // 乘法
-    Polynomial operator*(const Polynomial& b) const {
-        Polynomial result;
-        for (Term* p = head; p; p = p->next) {
-            for (Term* q = b.head; q; q = q->next) {
-                result.newTerm(p->coef * q->coef, p->exp + q->exp);
-            }
-        }
-        return result;
-    }
-
-    // Evaluate
-    double Evaluate(double x) const {
-        double sum = 0;
-        for (Term* p = head; p; p = p->next) {
-            double powX = 1;
-            for (int i = 0; i < p->exp; i++) powX *= x;
-            sum += p->coef * powX;
-        }
-        return sum;
-    }
-
-    // 輸入：先輸入幾項，再輸入（coef exp）
-    friend istream& operator>>(istream& is, Polynomial& poly) {
-        int n;
-        is >> n;
-        for (int i = 0; i < n; i++) {
-            double c; int e;
-            cout << "輸入第 " << i + 1 << " 項的係數與指數：";
-            is >> c >> e;
-            poly.newTerm(c, e);
-        }
-        return is;
-    }
-
-    // 輸出：格式 x^exp
-    friend ostream& operator<<(ostream& os, const Polynomial& poly) {
-        if (!poly.head) return os << "0";
-
-        bool first = true;
-        for (Term* p = poly.head; p; p = p->next) {
-            if (!first) os << " + ";
-            first = false;
-            os << p->coef << "x^" << p->exp;
-        }
-        return os;
-    }
 };
+```
+* Polynomial 使用單向鏈結串列儲存多項式，每個節點是一個 Term。
+* clear() 用於刪除所有節點避免洩漏，解構子 ~Polynomial() 會自動呼叫 clear()。
+  
+###  插入新項並保持排序
+```cpp
+void newTerm(double coef, int exp) {
+    if (coef == 0) return;
 
+    if (!head || head->exp < exp) {
+        head = new Term(coef, exp, head);
+        return;
+    }
+
+    Term* cur = head;
+    Term* prev = nullptr;
+    while (cur && cur->exp > exp) {
+        prev = cur;
+        cur = cur->next;
+    }
+
+    if (cur && cur->exp == exp) {
+        cur->coef += coef;
+        if (cur->coef == 0) {
+            if (prev) prev->next = cur->next;
+            else head = cur->next;
+            delete cur;
+        }
+        return;
+    }
+
+    Term* newNode = new Term(coef, exp, cur);
+    if (prev) prev->next = newNode;
+    else head = newNode;
+}
+```
+* 忽略係數0，空串或最大次方往前插且同次合併，否則按降冪插入適當位置。
+  
+ ### 多項式加減乘
+ ```cpp
+ Polynomial operator+(const Polynomial& b) const {
+    Polynomial result;
+    Term* p = head;
+    Term* q = b.head;
+
+    while (p && q) {
+        if (p->exp > q->exp) { result.newTerm(p->coef, p->exp); p = p->next; }
+        else if (p->exp < q->exp) { result.newTerm(q->coef, q->exp); q = q->next; }
+        else {
+            double c = p->coef + q->coef;
+            if (c != 0) result.newTerm(c, p->exp);
+            p = p->next; q = q->next;
+        }
+    }
+    while (p) { result.newTerm(p->coef, p->exp); p = p->next; }
+    while (q) { result.newTerm(q->coef, q->exp); q = q->next; }
+
+    return result;
+}
+Polynomial operator-(const Polynomial& b) const {
+    Polynomial result;
+    Term* q = b.head;
+    while (q) {
+        result.newTerm(-q->coef, q->exp);
+        q = q->next;
+    }
+    return *this + result;
+}
+
+Polynomial operator*(const Polynomial& b) const {
+    Polynomial result;
+    for (Term* p = head; p; p = p->next) {
+        for (Term* q = b.head; q; q = q->next) {
+            result.newTerm(p->coef * q->coef, p->exp + q->exp);
+        }
+    }
+    return result;
+}
+```
+* 加法：同時走兩串，依照指數大小決定插入位置，同次方合併。
+* 減法：把 B 變成負的，再做加法。
+* 乘法：每一項相乘後丟給 newTerm，由它負責排序與合併。
+### 多項式代值計算
+```cpp
+double Evaluate(double x) const {
+    double sum = 0;
+    for (Term* p = head; p; p = p->next) {
+        double powX = 1;
+        for (int i = 0; i < p->exp; i++) powX *= x;
+        sum += p->coef * powX;
+    }
+    return sum;
+}
+```
+### 輸入與輸出重載
+```cpp
+friend istream& operator>>(istream& is, Polynomial& poly) {
+    int n;
+    is >> n;
+    for (int i = 0; i < n; i++) {
+        double c; int e;
+        cout << "輸入第 " << i + 1 << " 項的係數與指數：";
+        is >> c >> e;
+        poly.newTerm(c, e);
+    }
+    return is;
+}
+
+friend ostream& operator<<(ostream& os, const Polynomial& poly) {
+    if (!poly.head) return os << "0";
+
+    bool first = true;
+    for (Term* p = poly.head; p; p = p->next) {
+        if (!first) os << " + ";
+        first = false;
+        os << p->coef << "x^" << p->exp;
+    }
+    return os;
+}
+```
+*>>會先輸入項數，再輸入每一項的係數與指數。
+*<<會按降冪輸出多項式，項用 + 連接。
+
+### main()
+```cpp
 int main() {
     Polynomial A, B;
     double x;
@@ -193,7 +179,6 @@ int main() {
 
     return 0;
 }
-
 ```
 ## 效能分析
 **資料結構與排序影響**:
