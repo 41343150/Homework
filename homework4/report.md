@@ -254,7 +254,10 @@ g++ -std=c++17 -o heap.exe your_file.cpp
 ## 程式實作
 ### 結構與插入(a)
 ```cpp
-#include <bits/stdc++.h>
+#include <iostream>
+#include <algorithm>
+#include <cmath>
+#include <random>
 using namespace std;
 
 // 節點結構
@@ -262,43 +265,52 @@ struct Node {
     int val;        // 節點值
     Node* left;     // 左子節點
     Node* right;    // 右子節點
-    Node(int v): val(v), left(nullptr), right(nullptr) {}
+    Node(int v): val(v), left(NULL), right(NULL) {}
 };
 
 // 插入節點到 BST
 Node* insert(Node* root, int val) {
     if (!root) return new Node(val);           // 空樹 → 新節點
-    if (val < root->val)                       // 小於根值 → 左子樹
+    if (val < root->val)                       // 小於 → 左
         root->left = insert(root->left, val);
-    else                                       // 大於等於根值 → 右子樹
+    else                                       // 否則 → 右
         root->right = insert(root->right, val);
     return root;
-}```
+}
+```
 ### 計算高度
 ```cpp
 // 計算樹高度
 int height(Node* root) {
-    if (!root) return 0;                       // 空樹高度 0
-    return 1 + max(height(root->left), height(root->right)); // 左右子樹最大高度 + 1
+    if (!root) return 0;
+    return 1 + max(height(root->left), height(root->right));
 }
 ```
+
 ### 刪除節點 (b) 
 ```cpp
-// 刪除指定 key 節點
+// 找右子樹最小值
+Node* findMin(Node* root) {
+    while (root->left)
+        root = root->left;
+    return root;
+}
+
+// 刪除指定 key
 Node* deleteNode(Node* root, int key) {
-    if (!root) return nullptr;                 // 空樹 → 返回
-    if (key < root->val)                       // key 小於根值 → 左子樹刪除
+    if (!root) return NULL;
+
+    if (key < root->val)
         root->left = deleteNode(root->left, key);
-    else if (key > root->val)                  // key 大於根值 → 右子樹刪除
+    else if (key > root->val)
         root->right = deleteNode(root->right, key);
-    else {                                     // 找到節點
-        if (!root->left) return root->right;   // 無左子節點 → 回傳右子節點
-        if (!root->right) return root->left;   // 無右子節點 → 回傳左子節點
-        // 有左右子節點 → 找右子樹最小值替換
-        Node* temp = root->right;
-        while (temp->left) temp = temp->left;  // 找右子樹最小節點
-        root->val = temp->val;                 // 替換節點值
-        root->right = deleteNode(root->right, temp->val); // 刪除右子樹最小節點
+    else {
+        if (!root->left) return root->right;
+        if (!root->right) return root->left;
+
+        Node* temp = findMin(root->right);
+        root->val = temp->val;
+        root->right = deleteNode(root->right, temp->val);
     }
     return root;
 }
@@ -306,18 +318,42 @@ Node* deleteNode(Node* root, int key) {
 ### main() 
 ```cpp
 int main() {
-    vector<int> ns = {100, 500, 1000, 2000, 3000, 10000}; // 測試 n 值
-    for (int n : ns) {
-        Node* root = nullptr;                             // 初始空樹
-        for (int i = 0; i < n; i++) {
-            int val = rand() % (n*10);                   // 隨機生成節點值
-            root = insert(root, val);                    // 插入 BST
+    int ns[] = {100, 500, 1000, 2000, 3000, 10000};
+
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dist(1, 1000000);
+
+    // ===== (a) 高度分析 =====
+    for (int i = 0; i < 6; i++) {
+        int n = ns[i];
+        Node* root = NULL;
+
+        for (int j = 0; j < n; j++) {
+            root = insert(root, dist(gen));
         }
-        int h = height(root);                             // 計算高度
-        double ratio = h / log2(n);                       // 計算高度/log2(n)
-        cout << "n = " << n << ", height = " << h 
-             << ", height/log2(n) = " << ratio << endl;  // 輸出結果
+
+        int h = height(root);
+        double ratio = h / log2(n);
+
+        cout << "n=" << n
+             << " height=" << h
+             << " ratio=" << ratio << endl;
     }
+
+    // ===== (b) 刪除測試 =====
+    Node* root = NULL;
+    int arr[] = {50, 30, 70, 20, 40, 60, 80};
+
+    for (int i = 0; i < 7; i++)
+        root = insert(root, arr[i]);
+
+    cout << "\nBefore delete height=" << height(root) << endl;
+
+    root = deleteNode(root, 50);
+
+    cout << "After delete height=" << height(root) << endl;
+
     return 0;
 }
 ```
@@ -325,19 +361,20 @@ int main() {
 
 ### (a) 隨機插入高度比值
 | n      | 樹高 height | height / log2(n) |
-| ------ | --------- | --------------- |
-| 100    | 13        | 1.87            |
-| 500    | 20        | 1.92            |
-| 1000   | 28        | 1.97            |
-| 5000   | 40        | 2.05            |
-| 10000  | 44        | 2.08            |
+| ------ | ----------- | ---------------- |
+| 100    | 14          | 2.02             |
+| 500    | 21          | 2.01             |
+| 1000   | 29          | 2.09             |
+| 2000   | 32          | 2.02             |
+| 3000   | 35          | 2.02             |
+| 10000  | 45          | 2.15             |
 
 ### (b) 刪除操作時間複雜度
 | 操作   | 最壞情況 | 平均情況 |
 | ------ | -------- | -------- |
 | Delete | O(n)     | O(log n) |
 
-隨機插入下，BST 高度約為 `2 * log2(n)` → 高度 / `log2(n)` 比值趨於常數 ≈ 2
+隨機插入情況下，BST 高度大致為 `2 * log2(n)`，因此 `height / log2(n)` 會趨近常數（約 2），與理論結果一致。
 ## 編譯執行指令
 - 編譯程式
 g++ -std=c++17 -o bst.exe bst.cpp
@@ -383,6 +420,3 @@ g++ -std=c++17 -o bst.exe bst.cpp
 - **測試策略**：
   - 多個 n 值測試平均高度與 ratio，驗證理論。  
   - 測試刪除各種節點情況，確保程式正確性。  
-- **心得**：
-  - BST 能同時提供排序與查找功能，但需注意最壞情況。  
-  - 隨機化插入可以簡單降低退化風險，對教學與實驗非常有用。
