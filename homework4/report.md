@@ -4,7 +4,7 @@
 ## 解題說明
 ### (1) Min / Max Heap
 定義 MinPQ 抽象類別（包含 insert、extractMin 等操作），  
-後再 MinHeap 繼承並用 Binary Heap，各操作時間複雜度與 MaxHeap 對應相同。
+後再 MinHeap 繼承並用 Binary Heap，各操作時間複雜度與 MaxHeap 對應相同。  
 再設計 MaxHeap 並與 MinHeap 做對照，觀察兩者在操作上的時間複雜度是否一樣。
 
 ## 解題策略
