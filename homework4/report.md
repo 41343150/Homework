@@ -17,47 +17,103 @@
   - heap_up 用來維持插入後的堆積性質
   - heap_down 用來維持刪除後的堆積性質
 ## 程式實作
-### Heap 類別
+### Heap 類別程式
+
 ```cpp
+#include <algorithm>
+#include <iostream>
+using namespace std;
+
 template <typename T>
 class Heap {
 private:
-    vector<T> data;       // 存放堆元素
-    bool isMinHeap;       // true = MinHeap, false = MaxHeap
+    T arr[10000];   // 用陣列取代 vector
+    int sz;         // 目前元素數量
+    bool isMin;     // true = MinHeap, false = MaxHeap
 
-    // 比較函式決定父子節點交換方向
-    bool compare(const T& a, const T& b) const {
-        return isMinHeap ? a < b : a > b;
+    bool cmp(const T& a, const T& b) const {
+        return isMin ? a < b : a > b;
     }
 
-    // 往上調整
-    void siftUp(int idx) {
-        while (idx > 0) {
-            int parent = (idx - 1) / 2;
-            if (compare(data[idx], data[parent])) {
-                swap(data[idx], data[parent]);
-                idx = parent;
+    void up(int i) {
+        while (i > 0) {
+            int p = (i - 1) / 2;
+            if (cmp(arr[i], arr[p])) {
+                swap(arr[i], arr[p]);
+                i = p;
             } else break;
         }
     }
 
-    // 往下調整
-    void siftDown(int idx) {
-        int n = data.size();
-        while (2 * idx + 1 < n) {
-            int left = 2 * idx + 1;
-            int right = 2 * idx + 2;
-            int swapIdx = left;
+    void down(int i) {
+        while (2 * i + 1 < sz) {
+            int l = 2 * i + 1;
+            int r = 2 * i + 2;
+            int t = l;
 
-            if (right < n && compare(data[right], data[left])) swapIdx = right;
+            if (r < sz && cmp(arr[r], arr[l])) t = r;
 
-            if (compare(data[swapIdx], data[idx])) {
-                swap(data[idx], data[swapIdx]);
-                idx = swapIdx;
+            if (cmp(arr[t], arr[i])) {
+                swap(arr[i], arr[t]);
+                i = t;
             } else break;
         }
     }
-```
+
+public:
+    Heap(bool type = true) {
+        isMin = type;
+        sz = 0;
+    }
+
+    bool empty() const {
+        return sz == 0;
+    }
+
+    T top() const {
+        if (empty()) {
+            cout << "Heap is empty!\n";
+            return T();
+        }
+        return arr[0];
+    }
+
+    void push(T x) {
+        arr[sz++] = x;
+        up(sz - 1);
+    }
+
+    void pop() {
+        if (empty()) {
+            cout << "Heap is empty!\n";
+            return;
+        }
+        swap(arr[0], arr[sz - 1]);
+        sz--;
+        if (!empty()) down(0);
+    }
+
+    void build(int n) {
+        T x;
+        for (int i = 0; i < n; i++) {
+            cin >> x;
+            push(x);
+        }
+    }
+
+    void printLevels() const {
+        int i = 0, level = 0;
+        while (i < sz) {
+            int cnt = 1 << level;
+            cout << "Level " << level << ": ";
+            for (int j = 0; j < cnt && i < sz; j++) {
+                cout << arr[i++] << " ";
+            }
+            cout << endl;
+            level++;
+        }
+    }
+};
 ### 公開介面
 ```cpp
 public:
@@ -109,32 +165,30 @@ public:
 ```cpp
 int main() {
     int n;
-    cout << "請輸入測資數量: ";
+    cout << "輸入測資數量: ";
     cin >> n;
 
-    // MinHeap
-    Heap<int> minHeap(true);
-    cout << "輸入 " << n << " 個數字 (MinHeap):\n";
-    minHeap.build(n);
+    Heap<int> h1(true);
+    cout << "輸入 MinHeap:\n";
+    h1.build(n);
 
     cout << "\nMinHeap:\n";
-    minHeap.printLevels();
-    cout << "最小值: " << minHeap.top() << endl;
-    minHeap.pop();
-    cout << "刪除最小值後:\n";
-    minHeap.printLevels();
+    h1.printLevels();
+    cout << "最小值: " << h1.top() << endl;
+    h1.pop();
+    cout << "刪除後:\n";
+    h1.printLevels();
 
-    // MaxHeap
-    Heap<int> maxHeap(false);
-    cout << "\n輸入 " << n << " 個數字 (MaxHeap):\n";
-    maxHeap.build(n);
+    Heap<int> h2(false);
+    cout << "\n輸入 MaxHeap:\n";
+    h2.build(n);
 
     cout << "\nMaxHeap:\n";
-    maxHeap.printLevels();
-    cout << "最大值: " << maxHeap.top() << endl;
-    maxHeap.pop();
-    cout << "刪除最大值後:\n";
-    maxHeap.printLevels();
+    h2.printLevels();
+    cout << "最大值: " << h2.top() << endl;
+    h2.pop();
+    cout << "刪除後:\n";
+    h2.printLevels();
 
     return 0;
 }
@@ -142,48 +196,51 @@ int main() {
 ## 效能分析
 
 ### 節點比較與上/下浮操作
+- **比較函式 `cmp(a, b)`**  
+  用來判斷父子節點大小，決定交換方向  
+  - 單次比較 → O(1)
+- **上浮 `up(i)` / 下沉 `down(i)`**  
+  - 最壞情況：遍歷堆高度 → O(log n)  
+  - 平均情況：少量交換 → 接近 O(1)
 
-- **比較函式 `C(a, b)`**  
-  判斷父子節點大小，單次 `<` 或 `>` 比較 → O(1)
-- **上浮 `heap_up(i)` / 下沉 `heap_down(i)`**  
-  沿父或子方向逐層調整堆性質  
-  - 最壞情況需遍歷堆高度 → O(log n)  
-  - 平均情況只需少量交換 → 接近 O(1)
 ### 插入與刪除元素
+- **Push()**  
+  - 將元素加入陣列末端 → O(1)  
+  - 上浮調整堆 → O(log n)  
+  - **總時間複雜度**：O(log n)
+- **Pop()**  
+  - 將堆頂與最後元素交換 → O(1)  
+  - 刪除最後元素 → O(1)  
+  - 下沉調整堆 → O(log n)  
+  - **總時間複雜度**：O(log n)
+- **Top() / Empty()**  
+  - 直接取堆頂或判斷是否為空 → O(1)
 
-- **Push()**：插入元素 + 上浮  
-  - `push_back()` → O(1)  
-  - `heap_up()` → O(log n)  
-  - **總複雜度**：O(log n)
-- **Pop()**：刪除堆頂 + 下沉  
-  - 交換 + `pop_back()` → O(1)  
-  - `heap_down()` → O(log n)  
-  - **總複雜度**：O(log n)
-- **Top() / Empty()**：直接取堆頂或判空 → O(1)
 ### 批量建堆與印出
+- **build(n)**  
+  - 連續 push n 個元素 → O(n log n)
+- **printLevels()**  
+  - 掃描陣列印出每層節點 → O(n)
 
-- **建堆 `in_p(n)`**：連續 Push n 個元素 → O(n log n)  
-- **印出層級 `printTree()`**：掃描陣列印出每層節點 → O(n)
 ### 整體流程分析
-
-- **MinHeap 範例**：
+- **MinHeap 範例流程**：
   1. 輸入 n 個元素 → O(n log n)  
   2. 印出堆 → O(n)  
   3. 讀取堆頂 → O(1)  
   4. 刪除堆頂 → O(log n)  
-  5. 再印一次 → O(n)  
+  5. 再印一次 → O(n)
+- **MaxHeap 範例流程**  
+  與 MinHeap 相同，僅比較方向不同 → 總複雜度 ≈ O(n log n)
 
-- **MaxHeap 範例**：流程與 MinHeap 相同，僅比較方向不同 → 總複雜度 ≈ O(n log n)
+### 隨機插入高度比值
+- 在隨機輸入下，堆高度通常接近 `log₂(n)`  
+- MinHeap 與 MaxHeap 皆維持堆積性質 → 操作效率穩定
 
-### 測試與驗證
-| 測試案例     | 輸入參數           | 輸出結果                    |
-| ------------ | ---------------- | -------------------------- |
-| 多項式 A     | 3 項              | Ax^4 + Bx^2 + Cx^0         |
-| 多項式 B     | 2 項              | Dx^3 + Ex^1                |
-| A + B        | -                | Ax^4 + Dx^3 + Bx^2 + Ex^1 + Cx^0 |
-| A - B        | -                | Ax^4 - Dx^3 + Bx^2 - Ex^1 + Cx^0 |
-| A * B        | -                | (相乘後的結果，保持降冪)       |
-| A(x)        | x = 2            | 計算結果                    |
+### 測試驗證表
+| 測試案例 | 輸入數量 | 測資           | MinHeap Tree                  | MaxHeap Tree                  |
+| -------- | -------- | -------------- | ----------------------------- | ----------------------------- |
+| 測試一   | 5        | 12 3 25 7 1    | Level 0: 1 Level1: 3 25 Level2: 12 7 | Level0:25 Level1:7 12 Level2:3 1 |
+| 測試二   | 6        | 8 15 2 30 10 5 | Level0:2 Level1:8 5 Level2:30 15 10 | Level0:30 Level1:15 5 Level2:8 10 2 |
 
 ## 編譯執行指令
 - 編譯程式
