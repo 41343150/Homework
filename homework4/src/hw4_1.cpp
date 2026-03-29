@@ -119,6 +119,5 @@ int main() {
     cout << "刪除最大值後:\n";
     maxHeap.printLevels();
 
-    cout << "\n41343124.洋芋 =>防委標記\n";
     return 0;
 }
