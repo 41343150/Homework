@@ -233,10 +233,10 @@ g++ -std=c++17 -o heap.exe your_file.cpp
 ## 解題說明
 ###  Binary Search Tree（BST）
 本題分為兩部分：
-1.高度分析
+1.高度分析  
 - 從空 BST 開始，插入 n 個隨機數
 - 計算樹的高度 height，並計算比值 height / log₂(n)
 - 驗證比值是否接近常數（約 2）
-2.刪除節點
+2.刪除節點  
 - 實作函式刪除指定 key 的節點
 - 分析時間複雜度
