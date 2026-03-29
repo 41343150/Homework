@@ -17,140 +17,127 @@
   * heap_up 用來維持插入後的堆積性質
   * heap_down 用來維持刪除後的堆積性質
 ## 程式實作
-
+### Heap 類別
 ```cpp
-class Polynomial {
+template <typename T>
+class Heap {
 private:
-    Chain<Term> terms;
-public:
-    Polynomial() {}
-    Polynomial(const Polynomial& other) {
-        int index = 0;
-        for (ChainIterator<Term> it = other.begin(); it != other.end(); ++it, ++index)
-            terms.insert(index, *it);
+    vector<T> data;       // 存放堆元素
+    bool isMinHeap;       // true = MinHeap, false = MaxHeap
+
+    // 比較函式決定父子節點交換方向
+    bool compare(const T& a, const T& b) const {
+        return isMinHeap ? a < b : a > b;
     }
-    Polynomial& operator=(const Polynomial& other) {
-        if (this != &other) {
-            AvailableList<Term>::getBack(terms.release());
-            int index = 0;
-            for (ChainIterator<Term> it = other.begin(); it != other.end(); ++it, ++index)
-                terms.insert(index, *it);
+
+    // 往上調整
+    void siftUp(int idx) {
+        while (idx > 0) {
+            int parent = (idx - 1) / 2;
+            if (compare(data[idx], data[parent])) {
+                swap(data[idx], data[parent]);
+                idx = parent;
+            } else break;
         }
-        return *this;
     }
-    ~Polynomial() { AvailableList<Term>::getBack(terms.release()); }
-    ChainIterator<Term> begin() const { return terms.begin(); }
-    ChainIterator<Term> end() const { return terms.end(); }
+
+    // 往下調整
+    void siftDown(int idx) {
+        int n = data.size();
+        while (2 * idx + 1 < n) {
+            int left = 2 * idx + 1;
+            int right = 2 * idx + 2;
+            int swapIdx = left;
+
+            if (right < n && compare(data[right], data[left])) swapIdx = right;
+
+            if (compare(data[swapIdx], data[idx])) {
+                swap(data[idx], data[swapIdx]);
+                idx = swapIdx;
+            } else break;
+        }
+    }
+```
+### 公開介面
+```cpp
+public:
+    Heap(bool minHeap = true) : isMinHeap(minHeap) {}
+
+    bool empty() const { return data.empty(); }
+
+    const T& top() const {
+        if (empty()) throw runtime_error("Heap is empty!");
+        return data[0];
+    }
+
+    void push(const T& val) {
+        data.push_back(val);
+        siftUp(data.size() - 1);
+    }
+
+    void pop() {
+        if (empty()) throw runtime_error("Heap is empty!");
+        swap(data[0], data.back());
+        data.pop_back();
+        if (!empty()) siftDown(0);
+    }
+
+    void build(int n) {
+        T x;
+        for (int i = 0; i < n; i++) {
+            cin >> x;
+            push(x);
+        }
+    }
+
+    void printLevels() const {
+        int n = data.size();
+        int idx = 0, level = 0;
+        while (idx < n) {
+            int nodes = 1 << level;
+            cout << "Level " << level << ": ";
+            for (int i = 0; i < nodes && idx < n; i++) {
+                cout << data[idx++] << " ";
+            }
+            cout << endl;
+            level++;
+        }
+    }
 };
-*使用 Chain 單向鏈結串列儲存多項式，每個節點是一個 Term。
-*解構子釋放節點來避免記憶體洩漏。
-  
-###  插入新項並保持排序
-```cpp
-void newTerm(double coef, int exp) {
-    if (coef == 0) return;
-    if (begin() == end()) { terms.insert(0, Term(coef, exp)); return; }
-    int index = 0;
-    for (ChainIterator<Term> it = begin(); it != end(); ++it, ++index) {
-        if (it->exp < exp) { terms.insert(index, Term(coef, exp)); return; }
-        else if (it->exp == exp) { it->coef += coef; return; }
-    }
-    terms.insert(index, Term(coef, exp));
-}
 ```
-* 忽略係數0，空串或最大次方往前插且同次合併，否則按降冪插入適當位置。
-  
- ### 多項式加減乘
- ```cpp
- Polynomial operator+(const Polynomial& other) const {
-    Polynomial result;
-    ChainIterator<Term> p = begin(), q = other.begin();
-    while (p != end() && q != other.end()) {
-        if (p->exp > q->exp) { result.newTerm(p->coef, p->exp); ++p; }
-        else if (p->exp < q->exp) { result.newTerm(q->coef, q->exp); ++q; }
-        else { double c = p->coef + q->coef; if (c != 0) result.newTerm(c, p->exp); ++p; ++q; }
-    }
-    while (p != end()) { result.newTerm(p->coef, p->exp); ++p; }
-    while (q != other.end()) { result.newTerm(q->coef, q->exp); ++q; }
-    return result;
-}
-
-Polynomial operator-(const Polynomial& other) const {
-    Polynomial neg;
-    for (ChainIterator<Term> it = other.begin(); it != other.end(); ++it) neg.newTerm(-it->coef, it->exp);
-    return (*this) + neg;
-}
-
-Polynomial operator*(const Polynomial& other) const {
-    Polynomial result;
-    for (ChainIterator<Term> p = begin(); p != end(); ++p)
-        for (ChainIterator<Term> q = other.begin(); q != other.end(); ++q)
-            result.newTerm(p->coef * q->coef, p->exp + q->exp);
-    return result;
-}
-
-```
-* 加法：同時走兩串，依照指數大小決定插入位置，同次方合併。
-* 減法：把 B 變成負的，再做加法。
-* 乘法：每一項相乘後丟給 newTerm，由它負責排序與合併。
-### 多項式代值計算
-```cpp
-float Evaluate(float x) const {
-    float sum = 0;
-    for (ChainIterator<Term> it = begin(); it != end(); ++it) {
-        float pow = 1;
-        for (int i = 0; i < it->exp; ++i) pow *= x;
-        sum += it->coef * pow;
-    }
-    return sum;
-}
-
-```
-### 輸入與輸出
-```cpp
-istream& operator>>(istream& is, Polynomial& poly) {
-    int n;
-    is >> n;
-    for (int i = 0; i < n; ++i) {
-        double c; int e;
-        cout << "輸入第 " << i + 1 << " 項 (coef exp): ";
-        is >> c >> e;
-        poly.newTerm(c, e);
-    }
-    return is;
-}
-
-ostream& operator<<(ostream& os, const Polynomial& poly) {
-    bool first = true;
-    for (ChainIterator<Term> it = poly.begin(); it != poly.end(); ++it) {
-        if (!first) os << " + ";
-        first = false;
-        os << it->coef << "x^" << it->exp;
-    }
-    return os;
-}
-
-```
-*>>會先輸入項數，再輸入每一項的係數與指數。
-*<<會按降冪輸出多項式，項用 + 連接。
-
 ### main()
 ```cpp
 int main() {
-    Polynomial A, B;
-    float x;
-    cout << "輸入 A 的項數："; cin >> A;
-    cout << "輸入 B 的項數："; cin >> B;
-    cout << "輸入 x："; cin >> x;
-    cout << "A = " << A << endl;
-    cout << "B = " << B << endl;
-    cout << "A + B = " << (A + B) << endl;
-    cout << "A - B = " << (A - B) << endl;
-    cout << "A * B = " << (A * B) << endl;
-    cout << "A(" << x << ") = " << A.Evaluate(x) << endl;
+    int n;
+    cout << "請輸入測資數量: ";
+    cin >> n;
+
+    // MinHeap
+    Heap<int> minHeap(true);
+    cout << "輸入 " << n << " 個數字 (MinHeap):\n";
+    minHeap.build(n);
+
+    cout << "\nMinHeap:\n";
+    minHeap.printLevels();
+    cout << "最小值: " << minHeap.top() << endl;
+    minHeap.pop();
+    cout << "刪除最小值後:\n";
+    minHeap.printLevels();
+
+    // MaxHeap
+    Heap<int> maxHeap(false);
+    cout << "\n輸入 " << n << " 個數字 (MaxHeap):\n";
+    maxHeap.build(n);
+
+    cout << "\nMaxHeap:\n";
+    maxHeap.printLevels();
+    cout << "最大值: " << maxHeap.top() << endl;
+    maxHeap.pop();
+    cout << "刪除最大值後:\n";
+    maxHeap.printLevels();
+
     return 0;
 }
-
 ```
 # 效能分析
 
