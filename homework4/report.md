@@ -8,14 +8,14 @@
 再設計 MaxHeap 並與 MinHeap 做對照，觀察兩者在操作上的時間複雜度是否一樣。
 
 ## 解題策略
-*用 vector 存完全二元樹
-*透過索引模擬樹：
-*parent = (i - 1) / 2
-*left = 2*i + 1
-*right = 2*i + 2
-*用比較函式決定是 MinHeap 還是 MaxHeap
-*heap_up 用來維持插入後的堆積性質
-*heap_down 用來維持刪除後的堆積性質
+* 用 vector 存完全二元樹
+* 透過索引模擬樹：
+* parent = (i - 1) / 2
+* left = 2*i + 1
+* right = 2*i + 2
+* 用比較函式決定是 MinHeap 還是 MaxHeap
+* heap_up 用來維持插入後的堆積性質
+* heap_down 用來維持刪除後的堆積性質
 ## 程式實作
 
 ```cpp
