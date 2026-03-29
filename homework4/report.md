@@ -20,10 +20,6 @@
 ### Heap 類別程式
 
 ```cpp
-#include <algorithm>
-#include <iostream>
-using namespace std;
-
 template <typename T>
 class Heap {
 private:
@@ -113,54 +109,8 @@ public:
             level++;
         }
     }
-};
-### 公開介面
-```cpp
-public:
-    Heap(bool minHeap = true) : isMinHeap(minHeap) {}
+};```
 
-    bool empty() const { return data.empty(); }
-
-    const T& top() const {
-        if (empty()) throw runtime_error("Heap is empty!");
-        return data[0];
-    }
-
-    void push(const T& val) {
-        data.push_back(val);
-        siftUp(data.size() - 1);
-    }
-
-    void pop() {
-        if (empty()) throw runtime_error("Heap is empty!");
-        swap(data[0], data.back());
-        data.pop_back();
-        if (!empty()) siftDown(0);
-    }
-
-    void build(int n) {
-        T x;
-        for (int i = 0; i < n; i++) {
-            cin >> x;
-            push(x);
-        }
-    }
-
-    void printLevels() const {
-        int n = data.size();
-        int idx = 0, level = 0;
-        while (idx < n) {
-            int nodes = 1 << level;
-            cout << "Level " << level << ": ";
-            for (int i = 0; i < nodes && idx < n; i++) {
-                cout << data[idx++] << " ";
-            }
-            cout << endl;
-            level++;
-        }
-    }
-};
-```
 ### main()
 ```cpp
 int main() {
