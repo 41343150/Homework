@@ -186,7 +186,11 @@ int main() {
 | A(x)        | x = 2            | 計算結果                    |
 
 ## 編譯執行指令
-g++ -std=c++17 -o polynomial.exe your_file.cpp
+- 編譯程式
+g++ -std=c++17 -o heap.exe your_file.cpp
+
+- 執行程式
+./heap.exe
 # 申論及開發報告（重點畫意版）
 
 ## Heap 實作心得與設計
