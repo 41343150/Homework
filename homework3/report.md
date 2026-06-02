@@ -12,6 +12,288 @@
 * Iterator使用起來比較直觀。多項式運算時看起來會更乾淨也更好維護。
 * 加、減、乘、輸入與輸出都寫成運算子多載，讓程式裡可以直接用 A + B 或 cout << A 的方式操作。
 ## 程式實作
+## 程式實作
+
+### Insertion Sort（插入排序）
+
+```cpp
+void insertionSort(int a[], int n)
+{
+    // 從第二個元素開始插入
+    for(int i = 1; i < n; i++)
+    {
+        int key = a[i];
+        int j = i - 1;
+
+        // 將比 key 大的元素向右移動
+        while(j >= 0 && a[j] > key)
+        {
+            a[j + 1] = a[j];
+            j--;
+        }
+
+        // 插入到正確位置
+        a[j + 1] = key;
+    }
+}
+```
+
+* 將陣列分為已排序區與未排序區。
+* 每次取出一個元素插入已排序區的正確位置。
+* 適合小型資料排序。
+
+---
+
+### Merge Sort（合併排序）
+
+```cpp
+void mergeSort(int a[], int n)
+{
+    if(n <= 1)
+    {
+        return;
+    }
+
+    int* temp = new int[n];
+
+    // 每次將區塊大小擴大兩倍
+    for(int size = 1; size < n; size *= 2)
+    {
+        for(int left = 0; left < n; left += size * 2)
+        {
+            int mid = min(left + size, n);
+            int right = min(left + size * 2, n);
+
+            mergePart(a, temp, left, mid, right);
+        }
+
+        // 將合併結果複製回原陣列
+        for(int i = 0; i < n; i++)
+        {
+            a[i] = temp[i];
+        }
+    }
+
+    delete[] temp;
+}
+```
+
+```cpp
+void mergePart(int a[], int temp[],
+               int left, int mid, int right)
+{
+    int i = left;
+    int j = mid;
+    int k = left;
+
+    while(i < mid && j < right)
+    {
+        if(a[i] <= a[j])
+            temp[k++] = a[i++];
+        else
+            temp[k++] = a[j++];
+    }
+
+    while(i < mid)
+        temp[k++] = a[i++];
+
+    while(j < right)
+        temp[k++] = a[j++];
+}
+```
+
+* 使用分治法(Divide and Conquer)。
+* 將兩個已排序區間合併成一個更大的排序區間。
+* 時間複雜度固定為 O(n log n)。
+
+---
+
+### Heap Sort（堆積排序）
+
+```cpp
+void percDown(int a[], int i, int n)
+{
+    int child;
+    int temp = a[i];
+
+    while(i * 2 + 1 < n)
+    {
+        child = i * 2 + 1;
+
+        // 找較大的子節點
+        if(child != n - 1 &&
+           a[child] < a[child + 1])
+        {
+            child++;
+        }
+
+        if(temp < a[child])
+        {
+            a[i] = a[child];
+        }
+        else
+        {
+            break;
+        }
+
+        i = child;
+    }
+
+    a[i] = temp;
+}
+```
+
+```cpp
+void heapSort(int a[], int n)
+{
+    // 建立 Max Heap
+    for(int i = n / 2 - 1; i >= 0; i--)
+    {
+        percDown(a, i, n);
+    }
+
+    // 依序取出最大值
+    for(int j = n - 1; j > 0; j--)
+    {
+        swap(a[0], a[j]);
+        percDown(a, 0, j);
+    }
+}
+```
+
+* 利用最大堆積(Max Heap)特性排序。
+* 每次將最大值移到陣列尾端。
+* 不需額外儲存空間。
+
+---
+
+### Quick Sort（快速排序）
+
+```cpp
+int medianOfThree(int a[],
+                  int left,
+                  int right)
+{
+    int mid = (left + right) / 2;
+
+    if(a[mid] < a[left])
+        swap(a[left], a[mid]);
+
+    if(a[right] < a[left])
+        swap(a[left], a[right]);
+
+    if(a[right] < a[mid])
+        swap(a[mid], a[right]);
+
+    swap(a[mid], a[right - 1]);
+
+    return a[right - 1];
+}
+```
+
+```cpp
+void quickSortRange(int a[],
+                    int left,
+                    int right)
+{
+    if(left + 10 <= right)
+    {
+        int pivot =
+            medianOfThree(a, left, right);
+
+        int i = left;
+        int j = right - 1;
+
+        while(true)
+        {
+            while(a[++i] < pivot){}
+            while(a[--j] > pivot){}
+
+            if(i < j)
+                swap(a[i], a[j]);
+            else
+                break;
+        }
+
+        swap(a[i], a[right - 1]);
+
+        quickSortRange(a, left, i - 1);
+        quickSortRange(a, i + 1, right);
+    }
+    else
+    {
+        smallInsertionSort(a, left, right);
+    }
+}
+```
+
+```cpp
+void quickSort(int a[], int n)
+{
+    if(n > 1)
+    {
+        quickSortRange(a, 0, n - 1);
+    }
+}
+```
+
+* 使用 Median-of-Three 選 Pivot。
+* 將資料分成小於與大於 Pivot 兩部分。
+* 再遞迴處理左右子區間。
+
+---
+
+### Composite Sort（混合排序）
+
+```cpp
+void compositeSort(int a[], int n)
+{
+    if(n <= 30)
+    {
+        insertionSort(a, n);
+    }
+    else
+    {
+        mergeSort(a, n);
+    }
+}
+```
+
+* 小型資料使用 Insertion Sort。
+* 大型資料使用 Merge Sort。
+* 結合兩種排序法的優點，提高整體效率。
+
+---
+
+### Benchmark 效能測試
+
+```cpp
+double testOneTime(SortFunction sortFunction,
+                   int data[],
+                   int n)
+{
+    int* a = new int[n];
+
+    copyArray(data, a, n);
+
+    auto start =
+        high_resolution_clock::now();
+
+    sortFunction(a, n);
+
+    auto end =
+        high_resolution_clock::now();
+
+    delete[] a;
+
+    return getElapsedTime(start, end);
+}
+```
+
+* 使用 `chrono` 函式庫進行計時。
+* 測量每種排序法的執行時間。
+* 統計 Worst Case 與 Average Case。
+* 最後輸出至 `result.csv` 供後續效能分析與繪圖。
 
 ### Polynomial 類別
 ### Polynomial 類別
